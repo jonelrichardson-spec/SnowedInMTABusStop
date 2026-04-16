@@ -2,8 +2,6 @@
 
 > AI-powered snow detection tool that uses NYC traffic cameras to proactively identify blocked bus stops before they're reported to 311.
 
-![Snowed-In MTA Bus Stops](docs/screenshot.png)
-
 ## The Problem
 
 Every winter, NYC bus riders — especially elderly and disabled New Yorkers — are stranded at stops buried under plowed snow. The MTA has no real-time visibility into which of its 16,000+ bus stops are blocked after a storm. Dispatching crews is guesswork, and riders have no way to report conditions at scale.
