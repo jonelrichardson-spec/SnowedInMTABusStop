@@ -1,129 +1,103 @@
 # Snowed-In Bus Stop
 
-A real-time monitoring system that uses NYC traffic cameras and AI to detect snow-blocked bus stops, helping the MTA prioritize snow removal efforts.
+> AI-powered snow detection tool that uses NYC traffic cameras to proactively identify blocked bus stops before they're reported to 311.
 
-## Features
+![Snowed-In MTA Bus Stops](docs/screenshot.png)
 
-- **Live Camera Feed**: Displays NYC traffic cameras near MTA bus stops
-- **AI Snow Detection**: Color-based image analysis to detect snow accumulation
-- **Interactive Map**: Leaflet-powered map showing all monitored locations
-- **Snowplow Tracking**: Cross-references NYC snowplow activity data
-- **Visual Annotations**: Red box overlays highlighting blocked areas for MTA employees
+## The Problem
 
-## APIs Used
+Every winter, NYC bus riders — especially elderly and disabled New Yorkers — are stranded at stops buried under plowed snow. The MTA has no real-time visibility into which of its 16,000+ bus stops are blocked after a storm. Dispatching crews is guesswork, and riders have no way to report conditions at scale.
 
-| API | Purpose | Key Required |
-|-----|---------|--------------|
-| [NYCTMC Webcams](https://webcams.nyctmc.org/api/cameras) | Live traffic camera feeds | No |
-| [MTA Bus Time](http://bustime.mta.info/) | Bus stop locations | Yes (free) |
-| [NYC OpenData - SnowPlow](https://data.cityofnewyork.us/resource/rmhc-afj9.json) | Plow activity history | No |
+## What It Does
 
-## Quick Start
+An MTA operator or 311 dispatcher opens an interactive map showing every NYC bus stop with a nearby traffic camera. The system automatically analyzes live camera feeds for snow accumulation at curb level and flags each stop as blocked, clear, or obscured. Dispatchers can click any flagged stop to see the source camera image with snow areas highlighted, then route a plow crew without waiting on rider complaints.
 
-### 1. Clone the repository
-```bash
-git clone https://github.com/kelveloper/SnowedInBusStop.git
-cd SnowedInBusStop
-```
+## Key Features
 
-### 2. Set up environment
-```bash
-# Copy the environment template
-cp .env.example .env
-
-# Edit .env with your API keys (see below)
-```
-
-### 3. Install dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Run the server
-```bash
-python3 server.py
-```
-
-### 5. Open the app
-Open `app.html` in your browser or serve it locally:
-```bash
-# Option 1: Direct file
-open app.html
-
-# Option 2: Local server (recommended)
-python3 -m http.server 8080
-# Then visit http://localhost:8080/app.html
-```
-
-## API Keys Setup
-
-### MTA Bus Time API (Required)
-1. Go to [MTA Bus Time Developer Portal](http://bustime.mta.info/wiki/Developers/Index)
-2. Register for a free API key
-3. Add to your `.env` file:
-   ```
-   MTA_API_KEY=your_key_here
-   ```
-
-**Note**: A demo key is currently hardcoded for testing. Replace with your own for production use.
-
-### Hugging Face API (Optional)
-For enhanced AI analysis (not currently used):
-1. Create account at [huggingface.co](https://huggingface.co)
-2. Generate API token in settings
-3. Add to your `.env` file:
-   ```
-   HF_API_KEY=your_token_here
-   ```
-
-## Project Structure
-
-```
-SnowedInBusStop/
-├── app.html          # Main frontend application
-├── server.py         # Flask backend server
-├── requirements.txt  # Python dependencies
-├── .env.example      # Environment template
-├── .env              # Your API keys (git-ignored)
-└── README.md         # This file
-```
-
-## How It Works
-
-1. **Camera Discovery**: Fetches all NYC traffic cameras from NYCTMC API
-2. **Bus Stop Matching**: For each camera, queries MTA API for nearby bus stops (100m radius)
-3. **Snow Detection**: Analyzes camera images using color-based detection:
-   - Looks for high brightness (>200) with low saturation (<25)
-   - Focuses on bottom 40% of image (curb/sidewalk area)
-   - Adjusts for nighttime conditions
-4. **Status Classification**:
-   - **Blocked**: >40% curb snow or >50% ground snow
-   - **Clear**: <20% snow detected
-   - **Obscured**: Camera unavailable or analysis failed
-
-## Demo Mode
-
-For presentations, the app includes demo features:
-- **"View Demo: Blocked Bus Stop"** button shows annotated example
-- **"Mark as Blocked (Demo)"** button in camera modal
-- **Father Capodanno Blvd @ Sands LN** is auto-marked as blocked during analysis
+| Feature | What It Does |
+|---------|-------------|
+| Live Camera Feed | Pulls real-time images from 900+ NYC traffic cameras via the NYCTMC API |
+| AI Snow Detection | Color-based image analysis detects snow accumulation on sidewalks and curbs |
+| Interactive Map | Leaflet-powered map with color-coded markers for all monitored bus stops |
+| Bus Stop Matching | Automatically pairs each camera to nearby MTA bus stops within a 100m radius |
+| Snowplow Tracking | Cross-references NYC OpenData snowplow activity to show recent plow passes |
+| Visual Annotations | Red box overlays highlight blocked areas for MTA dispatchers |
 
 ## Tech Stack
 
-- **Frontend**: HTML, CSS, JavaScript, Leaflet.js
-- **Backend**: Python, Flask, Flask-CORS
-- **Image Analysis**: PIL (Pillow), NumPy
-- **APIs**: NYCTMC, MTA Bus Time, NYC OpenData
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| Frontend | HTML/CSS/JS | Lightweight UI with no build step — fast to prototype and deploy |
+| Backend | Python, Flask | Simple REST API to proxy camera feeds and run image analysis server-side |
+| Image Analysis | Pillow (PIL), NumPy | Efficient pixel-level color analysis without heavy ML dependencies |
+| Maps | Leaflet.js | Open-source, lightweight mapping with easy marker customization |
+| APIs | NYCTMC API, MTA Bus Time API, NYC OpenData | Official city/transit data ensures accurate, real-time camera and stop info |
+| Deployment | Local / Python HTTP Server | Zero-config local demo; easily containerizable for production |
 
-## Team
+## Architecture
 
-Built for NYC Hackathon by:
-- Jonel
-- Carolina
-- Jawad
-- Dawn
-- Kelvin
+```
+NYCTMC API → Flask Server → PIL/NumPy Analysis → Status Classification → Leaflet Map
+```
 
-## License
+The Flask server pulls live images from the NYCTMC camera feed, hands them to PIL/NumPy for pixel-level color analysis (HSV thresholds on the bottom 40% of each frame), classifies each camera view as blocked, clear, or obscured, and pushes the results to a Leaflet map that renders color-coded markers for every bus stop within 100m of a camera.
 
-MIT License
+## Technical Decisions
+
+**Color-based detection over an ML model**
+An ML segmentation model would need labeled training data we didn't have and adds per-image latency. HSV color thresholds — high brightness (>200) with low saturation (<25) — run in milliseconds and are surprisingly accurate for fresh snow on dark pavement. For a hackathon-scoped project, accuracy-per-hour-of-build-time favored the simple approach.
+
+**Bottom 40% image crop over full-frame analysis**
+Traffic cameras point at intersections — the top 60% is sky, buildings, and moving traffic that would trigger false positives (white vehicles, bright signage, overcast sky). Cropping to the bottom 40% focuses analysis on the curb and sidewalk where snow actually blocks riders.
+
+**100m radius bus stop matching over exact address lookup**
+MTA stop data and NYCTMC camera data use different coordinate systems and naming conventions, so string-matching street names fails on abbreviations and formatting differences. A 100m radius spatial match is more resilient and balances precision (narrow enough to tie a camera to the right stop) with coverage (wide enough that most stops near a camera get monitored).
+
+## Getting Started
+
+### Prerequisites
+- Python 3.8+
+- MTA Bus Time API key (free — register at the [MTA Bus Time Developer Portal](http://bustime.mta.info/wiki/Developers/Index))
+
+### Installation
+```bash
+git clone https://github.com/kelveloper/SnowedInBusStop.git
+cd SnowedInBusStop
+pip install -r requirements.txt
+```
+
+### Environment Variables
+Copy the template and add your keys:
+```bash
+cp .env.example .env
+```
+```
+MTA_API_KEY=your_key_here
+HF_API_KEY=your_token_here  # optional, for future ML features
+```
+
+The NYCTMC and NYC OpenData endpoints are public and require no key. The HF token is only needed if you swap the color-threshold detector for a Hugging Face segmentation model.
+
+### Run Locally
+```bash
+python3 server.py
+# In another terminal:
+python3 -m http.server 8080
+# Visit http://localhost:8080/app.html
+```
+
+## What I'd Build Next
+
+- **ML model upgrade**: Replace HSV thresholds with a fine-tuned segmentation model (e.g., Hugging Face SegFormer) trained on labeled winter traffic-camera frames to cut false positives from shadows and wet pavement
+- **Historical snow pattern tracking**: Log per-stop blockage frequency across the season to surface chronic problem stops and inform pre-positioning of plow crews before a storm hits
+- **MTA/311 API integration for automated dispatch**: Push detected blockages directly into the MTA dispatch system and NYC 311 so crews are routed without a human in the loop
+
+## About This Project
+
+Built during Pursuit's AI-Native Builder Fellowship (January 2026). Team of five.
+
+**My role:** Team lead. Led project scoping, task delegation, and coordinated the five-person team from idea to working prototype.
+
+---
+
+Built by [Jonel Richardson](https://linkedin.com/in/jonel-richardson-09a399382)
