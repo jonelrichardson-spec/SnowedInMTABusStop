@@ -59,7 +59,7 @@ MTA stop data and NYCTMC camera data use different coordinate systems and naming
 
 ### Installation
 ```bash
-git clone https://github.com/jonelrichardson-spec/SnowedInMTABusStop.git
+git clone https://github.com/jonelrichardson/SnowedInMTABusStop.git
 cd SnowedInMTABusStop
 pip install -r requirements.txt
 ```
